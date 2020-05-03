@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>OCRSC</title>
+    <meta name="title" content="OCRSC">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Arimo&display=swap" rel="stylesheet">
+
+    <style>
+        body, footer {
+            font-family: 'Arimo', sans-serif !important;
+        }
+
+        html {
+            position: relative;
+            min-height: 100%;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 60px;
+            line-height: 60px;
+            background-color: #f5f5f5;
+        }
+
+        .row {
+            width: 100%;
+            height: calc(100vh - 116px);
+        }
+
+        .upload-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .upload-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+        }
+
+        .image-wrapper {
+            width: 40vw;
+            height: 30vh;
+            margin: auto;
+            display: none;
+        }
+
+        #img {
+            max-height: 100%;
+            max-width: 100%;
+        }
+
+        div.progress {
+            display: none;
+        }
+
+        #reset-button {
+            display: none;
+        }
+
+        @media only screen and (max-width: 607px) {
+            .image-wrapper {
+                width: 90vw;
+            }
+
+            .row {
+                margin-top: -56px!important;
+            }
+
+            #col1 {
+                margin-bottom: 32vh;
+                margin-top: 32vh;
+            }
+
+            #col2 {
+                padding-bottom: 60px;
+            }
+
+            p.h1 {
+                font-size: 1.7rem;
+            }
+
+            span.text-muted {
+                font-size: 0.8rem;
+            }
+
+            .row::before {
+              animation: bounce 1s ease infinite;
+              bottom: 2rem;
+              color: #007bff;
+              content: '╲╱';
+              font-size: 2rem;
+              height: 4rem;
+              left: 50%;
+              letter-spacing: -1px;
+              line-height: 4rem;
+              margin-left: -3rem;
+              opacity: 0.8;
+              position: absolute;
+              text-align: center;
+              width: 6rem;
+            }
+
+            @keyframes bounce {
+              50% {
+                transform: translateY(-50%);
+              }
+
+              100% {
+                transform: translateY(0);
+              }
+            }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-light bg-light justify-content-center">
+    <a class="navbar-brand" href="#">
+        OCRSC
+    </a>
+</nav>
+
+<div class="row text-center align-items-center m-0">
+    <div class="col" id="col1">
+        <h1 class="display-3 text-primary mb-5">READY?</h1>
+        <div class="upload-wrapper mt-2">
+            <button class="btn btn-dark btn-lg" id="upload-button">Upload Image</button>
+            <input id="file" type="file" accept="image/jpeg, image/png" autocomplete="off" onchange="orient(event);">
+        </div>
+        <div class="image-wrapper" id="image-wrapper">
+            <img id="img" src="#" alt="">
+        </div>
+        <div class="progress mt-5" id="progress">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressbar" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <button class="btn btn-dark btn-lg mt-2" id="reset-button" onclick="resetpage()">Reset</button>
+    </div>
+    <div class="col" id="col2">
+        <p class="h1">Take a photo of any CIE past paper question and you'll be redirected in just a few seconds
+        to the search results matching the question. Clicking on the first result will normally find the question and its accompanying mark scheme.</p>
+    </div>
+</div>
+<p id="rotation" style="display: none">1</p>
+<footer class="footer">
+    <div class="container text-center">
+        <span class="text-muted">
+            Developed by <a href="https://lawrencecoding.com" target="_blank">Lourenço Silva</a> | Not affiliated with <a href="https://paper.sc" target="_blank">paper.sc</a>
+        </span>
+    </div>
+</footer>
+
+<script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
+<script src="https://cdn.jsdelivr.net/npm/browser-image-compression@latest/dist/browser-image-compression.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+</body>
+<script>
+    hasran = false;
+
+    window.addEventListener("scroll", disablescroll);
+
+    function resetpage() {
+        location.reload()
+    }
+
+    function disablescroll() {
+        if (hasran === false) {
+            hasran = true;
+            const csstoadd = ".row::before {display: none!important;}"
+            const styleTag = document.createElement("style");
+            styleTag.innerHTML = csstoadd;
+            document.head.insertAdjacentElement('beforeend', styleTag);
+        }
+    }
+
+    function getOrientation(file, callback) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+
+            var view = new DataView(e.target.result);
+            if (view.getUint16(0, false) != 0xFFD8)
+            {
+                return callback(-2);
+            }
+            var length = view.byteLength, offset = 2;
+            while (offset < length)
+            {
+                if (view.getUint16(offset+2, false) <= 8) return callback(-1);
+                var marker = view.getUint16(offset, false);
+                offset += 2;
+                if (marker == 0xFFE1)
+                {
+                    if (view.getUint32(offset += 2, false) != 0x45786966)
+                    {
+                        return callback(-1);
+                    }
+
+                    var little = view.getUint16(offset += 6, false) == 0x4949;
+                    offset += view.getUint32(offset + 4, little);
+                    var tags = view.getUint16(offset, little);
+                    offset += 2;
+                    for (var i = 0; i < tags; i++)
+                    {
+                        if (view.getUint16(offset + (i * 12), little) == 0x0112)
+                        {
+                            return callback(view.getUint16(offset + (i * 12) + 8, little));
+                        }
+                    }
+                }
+                else if ((marker & 0xFF00) != 0xFF00)
+                {
+                    break;
+                }
+                else
+                {
+                    offset += view.getUint16(offset, false);
+                }
+            }
+            return callback(-1);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function orient(event) {
+        getOrientation(event.target.files[0], function(orientation) {
+        document.getElementById("rotation").innerHTML = orientation;
+    });
+        handleImageUpload(event);
+    }
+
+    async function handleImageUpload(event) {
+
+      const imageFile = event.target.files[0];
+
+      const options = {
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 1000,
+        useWebWorker: false,
+        exifOrientation: document.getElementById("rotation").innerHTML
+      }
+      try {
+        const compressedFile = await imageCompression(imageFile, options);
+
+        await run(event, compressedFile)
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    function run(input, compressedFile) {
+        disablescroll();
+        document.getElementById("upload-button").style.display = "none";
+        document.getElementById("file").style.display = "none";
+        document.getElementById("progress").style.display = "flex";
+        document.getElementById("image-wrapper").style.display = "block";
+        if (screen.width < 607) {
+            document.getElementById("col1").style.marginTop = "10vh";
+        }
+        if (compressedFile) {
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                document.getElementById("img").src = e.target.result;
+            }
+
+            reader.readAsDataURL(compressedFile); }
+
+        const { createWorker } = Tesseract;
+        const worker = createWorker({
+          logger: m => document.getElementById("progressbar").style.width = (m.progress * 100) + "%",
+        });
+        (async () => {
+          await worker.load();
+          await worker.loadLanguage('eng');
+          await worker.initialize('eng');
+          const { data: { text } } = await worker.recognize(compressedFile);
+          const uri = encodeURI(text);
+          await worker.terminate();
+          document.getElementById("reset-button").style.display = "inline";
+          window.location.href = "https://paper.sc/search/?as=page&query=".concat(uri);
+        })();
+    }
+</script>
+</html>
