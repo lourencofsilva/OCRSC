@@ -4,13 +4,13 @@ Small one-page web project to simplify finding answers to CIE past paper questio
 
 
 
-![](https://lourencofsilva.github.io/demo/ocrsc/desktop1.png)
+![](https://www.lourencofsilva.com/demo/ocrsc/desktop1.png)
 
 ## Demo
 
 This project can be accessed at:
 
-https://lourencofsilva.github.io/demo/ocrsc/index.html
+https://www.lourencofsilva.com/demo/ocrsc
 ## License
 
 ```
